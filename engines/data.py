@@ -65,7 +65,8 @@ class DataManager:
             if self.data_args.train_file_dir is not None and os.path.exists(self.data_args.train_file_dir):
                 train_data_files = glob(f'{self.data_args.train_file_dir}/**/*.txt', recursive=True) + glob(
                     f'{self.data_args.train_file_dir}/**/*.json', recursive=True) + glob(
-                    f'{self.data_args.train_file_dir}/**/*.jsonl', recursive=True)
+                    f'{self.data_args.train_file_dir}/**/*.jsonl', recursive=True) + glob(
+                    f'{self.data_args.train_file_dir}/**/*.mmd.*', recursive=True)
                 self.logger.info(f"train files: {', '.join(train_data_files)}")
                 data_files['train'] = train_data_files
             if self.training_args.do_eval and self.data_args.validation_file_dir is not None \
@@ -75,7 +76,8 @@ class DataManager:
                     f'{self.data_args.validation_file_dir}/**/*.jsonl', recursive=True)
                 self.logger.info(f"eval files: {', '.join(eval_data_files)}")
                 data_files['validation'] = eval_data_files
-            extension = 'text' if data_files['train'][0].endswith('txt') else 'json'
+            extension = 'text' if data_files['train'][0].endswith('txt') \
+                                  or data_files['train'][0].find(".mmd") != -1 else 'json'
             if extension == 'text':
                 kwargs['keep_linebreaks'] = True
             raw_datasets = load_dataset(
