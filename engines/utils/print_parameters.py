@@ -131,7 +131,9 @@ def print_trainable_parameters(model, logger):
     """
     trainable_params = 0
     all_param = 0
+    logger.info("print_trainable_parameters:")
     for _, param in model.named_parameters():
+        logger.info(f"param {_}: {param.numel()}")
         all_param += param.numel()
         if param.requires_grad:
             trainable_params += param.numel()
