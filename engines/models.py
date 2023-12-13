@@ -231,6 +231,7 @@ class BaseModels:
                 from attention_sinks import LlamaForCausalLM
             else:
                 from transformers import LlamaForCausalLM
+            self.logger.info(f"To load llama:{model_to_load}, config_kwargs:{config_kwargs}")
             model = LlamaForCausalLM.from_pretrained(model_to_load, **config_kwargs)
         elif self.model_args.model_type == 'bloom':
             from transformers import BloomForCausalLM
