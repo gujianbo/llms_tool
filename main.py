@@ -19,6 +19,11 @@ if __name__ == '__main__':
     log_name = './logs/' + mode + '.log'
     logger.add(log_name, encoding='utf-8')
 
+    logger.info(f"llms_tool_params_mode: {config.mode}")
+    logger.info(f"llms_tool_params_model_args: {config.model_args}")
+    logger.info(f"llms_tool_params_data_args: {config.data_args}")
+    logger.info(f"llms_tool_params_training_args: {config.training_args}")
+    logger.info(f"llms_tool_params_generating_args: {config.generating_args}")
     data_manager = DataManager(config, logger)
     if mode == 'pretrain':
         # 模型预训练
