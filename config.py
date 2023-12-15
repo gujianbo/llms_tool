@@ -322,7 +322,7 @@ class TrainingArguments(Seq2SeqTrainingArguments):
         }
     )
     do_train: bool = field(
-        default=True,
+        default=False,
         metadata={
             # 进行训练
             # 继承于transformers的TrainingArguments
@@ -330,7 +330,7 @@ class TrainingArguments(Seq2SeqTrainingArguments):
         }
     )
     do_eval: bool = field(
-        default=True,
+        default=False,
         metadata={
             # 跑验证集
             # 继承于transformers的TrainingArguments
@@ -367,7 +367,7 @@ class TrainingArguments(Seq2SeqTrainingArguments):
         }
     )
     resume_from_checkpoint: Optional[Union[str, bool]] = field(
-        default=True,
+        default=False,
         metadata={
             # 断点续训
             # 继承于transformers的Seq2SeqTrainingArguments

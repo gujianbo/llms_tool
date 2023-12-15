@@ -73,7 +73,8 @@ class DataManager:
                     and os.path.exists(self.data_args.validation_file_dir):
                 eval_data_files = glob(f'{self.data_args.validation_file_dir}/**/*.txt', recursive=True) + glob(
                     f'{self.data_args.validation_file_dir}/**/*.json', recursive=True) + glob(
-                    f'{self.data_args.validation_file_dir}/**/*.jsonl', recursive=True)
+                    f'{self.data_args.validation_file_dir}/**/*.jsonl', recursive=True) + glob(
+                    f'{self.data_args.validation_file_dir}/**/*.mmd.*', recursive=True)
                 self.logger.info(f"eval files: {', '.join(eval_data_files)}")
                 data_files['validation'] = eval_data_files
             extension = 'text' if data_files['train'][0].endswith('txt') \
