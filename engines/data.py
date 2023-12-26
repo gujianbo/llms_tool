@@ -11,6 +11,7 @@ from datasets import load_dataset
 from itertools import chain
 from glob import glob
 import os
+import torch
 
 
 class DataManager:
@@ -61,13 +62,15 @@ class DataManager:
     def load_datasets_from_files(self, test=False):
         data_files = {}
         kwargs = {}
+        worker_info = torch.utils.data.get_worker_info()
+        self.logger.info(f'worker_info:{worker_info}')
         if not test:
             if self.data_args.train_file_dir is not None and os.path.exists(self.data_args.train_file_dir):
                 train_data_files = glob(f'{self.data_args.train_file_dir}/**/*.txt', recursive=True) + glob(
                     f'{self.data_args.train_file_dir}/**/*.json', recursive=True) + glob(
                     f'{self.data_args.train_file_dir}/**/*.jsonl', recursive=True) + glob(
                     f'{self.data_args.train_file_dir}/**/*.mmd.*', recursive=True)
-                self.logger.info(f"train files: {', '.join(train_data_files)}")
+                self.logger.info(f"train files: {', '.join(train_data_files[:30])}")
                 data_files['train'] = train_data_files
             if self.training_args.do_eval and self.data_args.validation_file_dir is not None \
                     and os.path.exists(self.data_args.validation_file_dir):
@@ -75,12 +78,14 @@ class DataManager:
                     f'{self.data_args.validation_file_dir}/**/*.json', recursive=True) + glob(
                     f'{self.data_args.validation_file_dir}/**/*.jsonl', recursive=True) + glob(
                     f'{self.data_args.validation_file_dir}/**/*.mmd.*', recursive=True)
-                self.logger.info(f"eval files: {', '.join(eval_data_files)}")
+                self.logger.info(f"eval files: {', '.join(eval_data_files[:30])}")
                 data_files['validation'] = eval_data_files
             extension = 'text' if data_files['train'][0].endswith('txt') \
                                   or data_files['train'][0].find(".mmd") != -1 else 'json'
             if extension == 'text':
                 kwargs['keep_linebreaks'] = True
+            if self.data_args.stream:
+                self.logger.info(f"load_data_stream!")
             raw_datasets = load_dataset(
                 extension,
                 data_files=data_files,
@@ -163,6 +168,60 @@ class DataManager:
             for k, t in concatenated_examples.items()
         }
         return result
+
+    def preprocess_pretrain_table_dataset(self, examples):
+        block_size = self.data_args.max_input_token
+        if block_size > self.tokenizer.model_max_length:
+            self.logger.warning(
+                f'The block_size passed ({block_size}) is larger than the maximum length for the model'
+                f'({self.tokenizer.model_max_length}). Using block_size={self.tokenizer.model_max_length}.'
+            )
+        block_size = min(block_size, self.tokenizer.model_max_length)
+        all_tok_items = []
+        tok_item = {}
+        i = 0
+        while i < len(examples['text']):
+            text = examples['text'][i]
+            if text.strip() == "[START_TABLE]":
+                tmp_text = ""
+                while i < len(examples['text']) and examples['text'][i].strip() != "[END_TABLE]":
+                    tmp_text += examples['text'][i]
+                    i += 1
+                if i < len(examples['text']):
+                    tmp_text += examples['text'][i]
+                text = tmp_text
+            tokenized_examples = self.tokenizer(text)
+            tmp_tok = {
+                k: t if k not in tok_item else tok_item[k] + t
+                for k, t in tokenized_examples.items()
+            }
+            if (len(tok_item.keys()) == 0 or len(tok_item[list(tok_item.keys())[0]]) <= block_size) and len(tmp_tok[list(tmp_tok.keys())[0]]) > block_size:
+                if len(tok_item.keys()) > 0:
+                    all_tok_items.append(tok_item)
+                if len(tokenized_examples[list(tokenized_examples.keys())[0]]) > block_size:
+                    tmp_tok = {
+                        k: t[:block_size]
+                        for k, t in tokenized_examples.items()
+                    }
+                    all_tok_items.append(tmp_tok)
+                    tok_item = {}
+                else:
+                    tok_item = tokenized_examples
+            elif len(tmp_tok[list(tmp_tok.keys())[0]]) == block_size:
+                all_tok_items.append(tmp_tok)
+                tok_item = {}
+            elif len(tmp_tok[list(tmp_tok.keys())[0]]) <= block_size:
+                tok_item = tmp_tok
+
+            i += 1
+        if len(tok_item.keys()) > 0 and len(tok_item[list(tok_item.keys())[0]]) > 0:
+            all_tok_items.append(tok_item)
+
+        concat_data = {
+            k: [items[k] for items in all_tok_items]
+            for k in all_tok_items[0].keys()
+        }
+        return concat_data
 
     def preprocess_train_supervised_fine_tuning_dataset(self, examples):
         # ChatGLM1: https://huggingface.co/THUDM/chatglm-6b/blob/main/tokenization_chatglm.py#L323

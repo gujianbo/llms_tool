@@ -294,6 +294,13 @@ class DataTrainingArguments:
             'help': "The corpus path for vocab's expansion."
         }
     )
+    streaming: Optional[bool] = field(
+        default=False,
+        metadata={
+            # 流式读取数据
+            'help': 'whether load dataset streamly'
+        }
+    )
 
 
 @dataclass
